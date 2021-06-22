@@ -1,0 +1,103 @@
+﻿@model IEnumerable<Organogram.Models.Worker>
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+@functions{
+
+    // A function that organize information from the model into a label to be displayed
+    // The return is HtmlString 'cause the default method (ie: return void with html directly at root)
+    // don't seem to work with nested function
+    HtmlString generateLabel(int id)
+    {
+        var worker = Model.ToList().Find(x => x.ID == id);
+
+        string label = new string("<div class=\"card text-white bg-dark mb-3\" style=\"max-width: 18rem; margin: auto;\">" +
+                                    "<div class=\"card-header\">");
+
+        label += worker.Name;
+        label += "</div>" +
+                 "<div class=\"card-body\">" +
+                    "<p class=\"card-text\">";
+        label += worker.Profession;
+        label += "</p></div></div>";
+
+
+        return new HtmlString(label);
+    }
+
+
+    // A recursive function use to create the orgasitional chart
+    // The return is HtmlString 'cause the default method (ie: return void with html directly at root)
+    // don't seem to work with nested function
+    HtmlString generateTable(int id)
+    {
+        var nMinus1List = Model.ToList().FindAll(x => x.SeniorID != null ? x.SeniorID.ID == id : false); // Get all item where Senior ID not null AND SeniorID == ID of the current worker
+        var nbrOfCellInNextLine = nMinus1List.Count();                                              // Calculate the number of cell un the next line for alignement purpose
+
+
+        string table = new string("<table class=\"table table-borderless justify-content-center\">" +
+                                "<tbody>" +
+                                    "<tr>" +
+                                        "<td class=\"text-center\" colspan=" + (nbrOfCellInNextLine != 0 ? nbrOfCellInNextLine * 2 : 2) + ">" + // The ternaire is a security for last worker in list
+                                            generateLabel(id).ToString() +
+                                        "</td>" +
+                                    "</tr>");
+
+
+
+        //If the worker don't have people under it stop the function
+        if (nbrOfCellInNextLine != 0)
+        {
+            table += "<tr> " +
+                       "<td colspan=" + (nbrOfCellInNextLine != 0 ? nbrOfCellInNextLine * 2 : 2) + " style=\"padding: 0px; margin: 0px\">" +
+                          "<div style=\"background-color: #343a40; padding: 0px; margin: 0px auto; height: 20px; width: 2px;\"></div>" +
+                       "</td>" +
+                     "</tr>" +
+                     "<tr>";
+
+            // decorative purpose (ie: lines linking labels)
+            // condition is needed to avoid line to be larger than necessary
+            foreach (var worker in nMinus1List)
+            {
+                if (nMinus1List.First().ID == worker.ID)
+                    table += "<td style=\"padding: 0px; margin: 0px\"><div class=\"border-right border-dark\" style=\"padding: 0px; margin: 0px auto; height: 20px; width: 50% align-self:right;\"></div></td>";
+                else
+                    table += "<td style=\"padding: 0px; margin: 0px\"><div class=\"border-right border-top border-dark\" style=\"padding: 0px; margin: 0px auto; height: 20px; width: 50% align-self:right;\"></div></td>";
+
+                if (nMinus1List.Last().ID == worker.ID)
+                    table += "<td style=\"padding: 0px; margin: 0px\"><div class=\"border-left border-dark\" style=\"padding: 0px; margin: 0px auto; height: 20px; width: 50% align-self:right;\"></div></td>";
+                else
+                    table += "<td style=\"padding: 0px; margin: 0px\"><div class=\"border-left border-top border-dark\" style=\"padding: 0px; margin: 0px auto; height: 20px; width: 50% align-self:right;\"></div></td>";
+            }
+            table += "</tr><tr>";
+
+            // Recursive part : create a table element to be nested in
+            // This choice was made to make cells from parents take space equal to width of maximum children in a row
+            foreach (var worker in nMinus1List)
+            {
+                table += "<td colspan=\"2\">";
+                table += generateTable(worker.ID).ToString();
+                table += "</td>";
+            }
+        }
+
+        table +=        "</tr>" +
+                    "</tbody>" +
+                 "</table>";
+
+        return new HtmlString(table);
+    }
+}
+
+
+<hr />
+@generateTable(Model.First().ID)
+
+
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
